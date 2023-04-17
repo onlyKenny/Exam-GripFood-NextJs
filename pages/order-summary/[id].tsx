@@ -4,7 +4,7 @@ import { Title } from '@/components/Title';
 import { Client, Cart } from '@/functions/swagger/BelajarNextJsBackEnd';
 import { useSwrFetcherWithAccessToken } from '@/functions/useSwrFetcherWithAccessToken';
 import { Page } from '@/types/Page';
-import { faEdit, faPlus, faRemove } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faRemove } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Modal, notification } from 'antd';
@@ -15,64 +15,49 @@ import { useRouter } from 'next/router';
 import useSwr from 'swr';
 
 const SummaryList: React.FC<{
-    id: string,
     cart: CartDetailModel,
-    onEdited: () => void,
-}> = ({ id, cart, onEdited }) => {
+    onDeleted: () => void
+}> = ({ cart, onDeleted}) => {
 
-    const {
-        handleSubmit,
-        register,
-        formState: { errors },
-        reset,
-        control
-    } = useForm<FormDataType>({
-        defaultValues: {
-            Qty: cart.Qty,
-        },
-        resolver: zodResolver(FormSchema)
-    });
+    function onClickDelete() {
+        Modal.confirm({
+            title: `Confirm Delete`,
+            content: `Delete product ${cart.name}?`,
+            okText: 'Yes',
+            okType: 'danger',
+            cancelText: 'No',
+            async onOk() {
+                if (!cart?.id) {
+                    return;
+                }
 
-    async function onSubmit(data: FormDataType) {
-        try {
-            const client = new Client('http://localhost:3000/api/be');
-            await client.updateCart(id, {
-                Qty: data.qty,
-            });
-            reset(data);
-            onEdited();
-            notification.success({
-                message: 'Success',
-                description: 'Successfully edited cart data',
-                placement: 'bottomRight',
-            });
-        } catch (error) {
-            console.error(error);
-        }
+                try {
+                    const client = new Client('http://localhost:3000/api/be');
+                    await client.deleteProduct(cart.id);
+                    onDeleted();
+                } catch (err) {
+                    console.error(err);
+                }
+            },
+        });
     }
 
-    const [search, setSearch] = useState('');
-    const params = new URLSearchParams();
-    params.append('search', search);
-    const brandsUri = '/api/be/api/Carts?' + params.toString();
-    const fetcher = useSwrFetcherWithAccessToken();
-    const { data, isLoading, isValidating } = useSwr<Cart[]>(brandsUri, fetcher);
-
     return (
-        <form onSubmit={handleSubmit(onSubmit)}>
-                <div>
-                    <label htmlFor='quantity'>Quantity</label>
-                    <button onClick={t => setQty(t.target.valueAsNumber-1)} type='button'>-</button>
-                    <input value={Qty} type='number' onChange={t => setQty(t.target.valueAsNumber)}
-                        className='block w-full p-1 text-sm rounded-md border-gray-500 border-solid border'></input>
-                    <p className='text-red-500'>{errors['quantity']?.message}</p>
-                    <button onClick={t => setQty(t.target.valueAsNumber+1)} type='button'>+</button>
-                </div>
-
-            <div className='mt-5'>
-                <SubmitButton>Submit</SubmitButton>
-            </div>
-        </form>
+        <tr>
+            <td className="border px-4 py-2">{cart.name}</td>
+            <td className="border px-4 py-2">{cart.qty}</td>
+            <td className="border px-4 py-2">{cart.subtotal}</td>
+            <td className="border px-4 py-2">
+                <Link href={`/add-to-cart/${cart.id}`} className="inline-block py-1 px-2 text-xs bg-blue-500 text-white rounded-lg">
+                    <FontAwesomeIcon className='mr-1' icon={faEdit}></FontAwesomeIcon>
+                    Edit Quantity
+                </Link>
+                <button onClick={onClickDelete} className="ml-1 py-1 px-2 text-xs bg-red-500 text-white rounded-lg">
+                    <FontAwesomeIcon className='mr-1' icon={faRemove}></FontAwesomeIcon>
+                    Delete
+                </button>
+            </td>
+        </tr>
     );
 };
 
